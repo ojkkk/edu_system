@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block title %}用户管理{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="admin-header">
+        <h2>用户管理</h2>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_add_user') }}" class="btn btn-primary">
+                ➕ 添加用户
+            </a>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+                📚 返回课程管理
+            </a>
+        </div>
+    </div>
+
+    <table class="admin-table">
+        <!-- 原有用户表格保持不变 -->
+        <tr>
+            <th>ID</th>
+            <th>用户名</th>
+            <th>角色</th>
+            <th>姓名</th>
+            <th>操作</th>
+        </tr>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.fullname }}</td>
+            <td>
+                <form method="POST" action="{{ url_for('admin_delete_user') }}"
+                      onsubmit="return confirm('确定删除该用户？');">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <button type="submit" class="btn btn-danger">删除</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

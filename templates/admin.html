@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% block title %}系统管理{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="admin-header">
+        <h2>课程管理</h2>
+        <div class="admin-actions">
+            <a href="{{ url_for('admin_add_course') }}" class="btn btn-primary">
+                ➕ 新建课程
+            </a>
+            <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">
+                👥 管理用户
+            </a>
+        </div>
+    </div>
+
+    <table class="admin-table">
+        <!-- 原有课程表格保持不变 -->
+        <tr>
+            <th>课程名称</th>
+            <th>授课教师</th>
+            <th>时间</th>
+            <th>地点</th>
+            <th>操作</th>
+        </tr>
+        {% for course in courses %}
+        <tr>
+            <td>{{ course.name }}</td>
+            <td>{{ course.teacher_name }}</td>
+            <td>{{ course.time }}</td>
+            <td>{{ course.location }}</td>
+            <td>
+                <form method="POST" action="{{ url_for('delete_course') }}"
+                      onsubmit="return confirmAction('确定删除该课程吗？')">
+                    <input type="hidden" name="course_id" value="{{ course.id }}">
+                    <button class="btn btn-danger" type="submit">删除</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<style>
+    /* 添加管理界面专用样式 */
+    .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .admin-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .admin-table {
+        margin-top: 1.5rem;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,173 @@
+{% extends "layout.html" %}
+{% block title %}教师面板{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>个人信息</h2>
+    <p>姓名：{{ teacher.fullname }}</p>
+    <p>邮箱：{{ teacher.email }}</p>
+</div>
+
+<div class="card">
+    <h3>我的课程</h3>
+    <div class="courses-list">
+    {% for course in courses %}
+    <div class="course-row">
+        <!-- 课程基本信息 -->
+        <div class="course-meta">
+            <div class="main-info">
+                <h4 class="course-name">{{ course.name }}</h4>
+                <span class="teacher">{{ course.teacher_name }}</span>
+            </div>
+            <span class="credit">学分：{{ course.credit }}</span>
+        </div>
+
+        <!-- 横向详情 -->
+        <div class="course-details">
+            <div class="detail-item">
+                <span class="label">时间</span>
+                <span class="value">{{ course.time }}</span>
+            </div>
+            <div class="detail-item">
+                <span class="label">地点</span>
+                <span class="value">{{ course.location }}</span>
+            </div>
+            <div class="detail-item highlight">
+                <span class="label">选课人数</span>
+                <span class="value">{{ course.student_count }}人</span>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <a href="{{ url_for('course_detail', course_id=course.id) }}"
+           class="action-btn">
+            管理学生 →
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+/* 课程列表容器 */
+.courses-list {
+    margin-top: 1.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* 单行课程容器 */
+.course-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr 1fr;
+    align-items: center;
+    padding: 1.2rem;
+    background: white;
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.2s;
+}
+
+.course-row:hover {
+    background: #fcfaff;
+    transform: translateX(5px);
+}
+
+/* 元信息部分 */
+.course-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.course-name {
+    color: #6a1b9a;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.teacher {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.credit {
+    background: #f3e5f5;
+    color: #6a1b9a;
+    padding: 0.2rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    width: fit-content;
+}
+
+/* 课程详情横向排列 */
+.course-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: 0 1.5rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 1rem;
+    border-right: 1px solid #eee;
+}
+
+.detail-item:last-child {
+    border-right: none;
+}
+
+.label {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.3rem;
+}
+
+.value {
+    color: #333;
+    font-weight: 500;
+}
+
+.highlight .value {
+    color: #6a1b9a;
+    font-weight: 600;
+}
+
+/* 操作按钮 */
+.action-btn {
+    background: #6a1b9a;
+    color: white !important;
+    padding: 0.6rem 1rem;
+    border-radius: 20px;
+    text-decoration: none;
+    text-align: center;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.action-btn:hover {
+    background: #4a148c;
+    box-shadow: 0 3px 6px rgba(106,27,154,0.2);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .course-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+
+    .course-details {
+        grid-template-columns: 1fr;
+        padding: 0;
+    }
+
+    .detail-item {
+        border-right: none;
+        border-bottom: 1px solid #eee;
+        padding: 0.5rem 0;
+    }
+}
+</style>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+<script>
+// 为所有成绩输入框绑定实时计算事件
+document.querySelectorAll('.grade-input').forEach(input => {
+    input.addEventListener('input', function() {
+        // 获取当前行的表单元素
+        const row = this.closest('tr');
+        const usualInput = row.querySelector('input[name="usual_grade"]');
+        const finalInput = row.querySelector('input[name="final_grade"]');
+        const totalCell = row.querySelector('.total-grade');
+
+        // 获取数值并进行验证
+        const usual = parseFloat(usualInput.value) || null;
+        const final = parseFloat(finalInput.value) || null;
+
+        // 计算和显示总评成绩
+        if (usual !== null && final !== null) {
+            const total = (usual * 0.3 + final * 0.7).toFixed(1);
+            totalCell.textContent = total;
+            updateGradeStatus(totalCell, total);
+        } else {
+            totalCell.textContent = '-';
+            totalCell.className = 'total-grade'; // 重置样式
+        }
+    });
+});
+
+// 更新成绩状态样式
+function updateGradeStatus(element, total) {
+    element.className = 'total-grade'; // 重置基础样式
+    if (total >= 90) element.classList.add('excellent');
+    else if (total >= 80) element.classList.add('good');
+    else if (total >= 70) element.classList.add('medium');
+    else if (total >= 60) element.classList.add('pass');
+    else element.classList.add('fail');
+}
+</script>
+
+<style>
+/* 总评成绩状态样式 */
+.total-grade.excellent { color: #4CAF50; }  /* 优秀：绿色 */
+.total-grade.good { color: #8BC34A; }      /* 良好：浅绿 */
+.total-grade.medium { color: #FFC107; }   /* 中等：黄色 */
+.total-grade.pass { color: #FF9800; }     /* 及格：橙色 */
+.total-grade.fail { color: #F44336; }     /* 不及格：红色 */
+</style>

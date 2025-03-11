@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block title %}用户注册{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>用户注册</h2>
+    <form method="POST">
+        <input type="text" name="username" placeholder="用户名" required>
+        <input type="password" name="password" placeholder="密码" required>
+        <select name="role">
+            <option value="student">学生</option>
+            <option value="teacher">教师</option>
+            <option value="admin">管理员</option>
+        </select>
+        <input type="text" name="fullname" placeholder="真实姓名" required>
+        <input type="email" name="email" placeholder="电子邮箱" required>
+        <button class="btn btn-primary" type="submit">注册</button>
+    </form>
+</div>
+{% endblock %}

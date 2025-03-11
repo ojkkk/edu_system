@@ -1,0 +1,303 @@
+{% extends "layout.html" %}
+{% block title %}课程管理{% endblock %}
+{% block content %}
+<div class="card course-management-card">
+    <!-- 头部操作栏 -->
+    <div class="management-header">
+        <h2 class="management-title">
+            <a href="{{ url_for('teacher_dashboard') }}" class="back-btn">
+                ←
+            </a>
+            课程学生管理
+        </h2>
+        <div class="header-actions">
+            <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary">
+                🏠 返回教师主页
+            </a>
+        </div>
+    </div>
+
+    <!-- 添加学生表单 -->
+    <div class="add-student-section">
+        <form method="POST" action="{{ url_for('add_student_to_course') }}">
+            <input type="hidden" name="course_id" value="{{ course_id }}">
+            <div class="form-inline">
+                <input type="text"
+                       name="username"
+                       placeholder="输入学生用户名"
+                       class="modern-input"
+                       required>
+                <button class="btn btn-primary" type="submit">
+                    ➕ 添加学生
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 成绩表格 -->
+    <div class="grade-table-container">
+        <table class="grade-table">
+            <thead>
+                <tr>
+                    <th>学生姓名</th>
+                    <th>平时成绩</th>
+                    <th>期末成绩</th>
+                    <th>总评成绩</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td class="student-name">{{ student.fullname }}</td>
+                    <form method="POST" action="{{ url_for('update_grades') }}">
+                        <input type="hidden" name="course_id" value="{{ course_id }}">
+                        <input type="hidden" name="student_id" value="{{ student.id }}">
+
+                        <td>
+                            <input type="number"
+                                   name="usual_grade"
+                                   value="{{ student.usual_grade if student.usual_grade is not none }}"
+                                   step="0.1"
+                                   min="0"
+                                   max="100"
+                                   class="grade-input"
+                                   required>
+                        </td>
+                        <td>
+                            <input type="number"
+                                   name="final_grade"
+                                   value="{{ student.final_grade if student.final_grade is not none }}"
+                                   step="0.1"
+                                   min="0"
+                                   max="100"
+                                   class="grade-input"
+                                   required>
+                        </td>
+                             <td class="total-grade" id="total-{{ student.id }}">
+                                    {% if student.usual_grade and student.final_grade %}
+                                     {{ "%.1f"|format(student.usual_grade * 0.3 + student.final_grade * 0.7) }}
+                                    {% else %}
+                                         <span class="na">-</span>
+                                    {% endif %}
+                             </td>
+
+                        <td>
+                            <button class="btn btn-save"
+                                    type="submit"
+                                    onclick="return confirm('确认更新成绩？')">
+                                更新
+                            </button>
+                        </td>
+                    </form>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+/* 卡片容器 */
+.course-management-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 2rem;
+}
+
+/* 头部样式 */
+.management-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.management-title {
+    display: flex;
+    align-items: center;
+    color: #6a1b9a;
+    margin: 0;
+}
+
+.back-btn {
+    color: #6a1b9a;
+    text-decoration: none;
+    font-size: 1.5em;
+    margin-right: 1rem;
+    transition: transform 0.2s;
+}
+
+.back-btn:hover {
+    transform: translateX(-3px);
+}
+
+/* 添加学生表单 */
+.add-student-section {
+    margin-bottom: 2.5rem;
+}
+
+.form-inline {
+    display: flex;
+    gap: 1rem;
+    max-width: 600px;
+}
+
+.modern-input {
+    flex: 1;
+    padding: 0.8rem 1.2rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    transition: border-color 0.3s;
+}
+
+.modern-input:focus {
+    border-color: #6a1b9a;
+    outline: none;
+    box-shadow: 0 0 8px rgba(106,27,154,0.15);
+}
+
+/* 成绩表格 */
+.grade-table-container {
+    overflow-x: auto;
+}
+
+.grade-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    min-width: 800px;
+}
+
+.grade-table th {
+    background: #f8f5fc;
+    color: #6a1b9a;
+    padding: 1.2rem;
+    font-weight: 600;
+}
+
+.grade-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.grade-table tr:hover td {
+    background: #fcfaff;
+}
+
+/* 输入框样式 */
+.grade-input {
+    width: 100px;
+    padding: 0.5rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.grade-input:focus {
+    border-color: #6a1b9a;
+}
+
+/* 总评成绩 */
+.total-grade {
+    color: #2ecc71;
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.na {
+    color: #95a5a6;
+    font-style: italic;
+}
+
+/* 操作按钮 */
+.btn-save {
+    background: #6a1b9a;
+    color: white !important;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    transition: all 0.2s;
+}
+
+.btn-save:hover {
+    background: #4a148c;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #9c27b0;
+    color: white;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-secondary:hover {
+    background: #6a1b9a;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .management-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .form-inline {
+        flex-direction: column;
+    }
+
+    .modern-input {
+        width: 100%;
+    }
+}
+/* 总评成绩状态样式 */
+.total-grade.excellent { color: #4CAF50; }  /* 优秀：绿色 */
+.total-grade.good { color: #8BC34A; }      /* 良好：浅绿 */
+.total-grade.medium { color: #FFC107; }   /* 中等：黄色 */
+.total-grade.pass { color: #FF9800; }     /* 及格：橙色 */
+.total-grade.fail { color: #F44336; }     /* 不及格：红色 */
+</style>
+<script>
+// 为所有成绩输入框绑定实时计算事件
+document.querySelectorAll('.grade-input').forEach(input => {
+    input.addEventListener('input', function() {
+        // 获取当前行的表单元素
+        const row = this.closest('tr');
+        const usualInput = row.querySelector('input[name="usual_grade"]');
+        const finalInput = row.querySelector('input[name="final_grade"]');
+        const totalCell = row.querySelector('.total-grade');
+
+        // 获取数值并进行验证
+        const usual = parseFloat(usualInput.value) || null;
+        const final = parseFloat(finalInput.value) || null;
+
+        // 计算和显示总评成绩
+        if (usual !== null && final !== null) {
+            const total = (usual * 0.3 + final * 0.7).toFixed(1);
+            totalCell.textContent = total;
+            updateGradeStatus(totalCell, total);
+        } else {
+            totalCell.textContent = '-';
+            totalCell.className = 'total-grade'; // 重置样式
+        }
+    });
+});
+
+// 更新成绩状态样式
+function updateGradeStatus(element, total) {
+    element.className = 'total-grade'; // 重置基础样式
+    if (total >= 90) element.classList.add('excellent');
+    else if (total >= 80) element.classList.add('good');
+    else if (total >= 70) element.classList.add('medium');
+    else if (total >= 60) element.classList.add('pass');
+    else element.classList.add('fail');
+}
+</script>
+{% endblock %}

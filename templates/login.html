@@ -1,0 +1,457 @@
+{% extends "layout.html" %}
+{% block title %}用户登录{% endblock %}
+{% block content %}
+<div class="login-container">
+
+    <div class="login-card">
+        <!-- 登录卡片装饰元素 -->
+        <div class="decorative-circle"></div>
+        <div class="decorative-wave">
+            <svg viewBox="0 0 100 100">
+                <path fill="rgba(106,27,154,0.1)" d="M0 0 Q 50 30 100 0 L 100 100 L 0 100 Z"/>
+            </svg>
+        </div>
+
+
+        <!-- 登录表单主体 -->
+        <div class="card-content">
+            <div class="brand-header">
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMNCAyMEgyMEwxMiAyWiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg=="
+                     class="logo"
+                     alt="系统logo">
+                <h1>教学管理系统</h1>
+            </div>
+
+            <form method="POST" class="login-form">
+                <div class="input-field">
+                    <input type="text"
+                           name="username"
+                           id="username"
+                           required
+                           autocomplete="off">
+                    <label for="username">用户名</label>
+                    <i class="fas fa-user"></i>
+                </div>
+
+                <div class="input-field">
+                    <input type="password"
+                           name="password"
+                           id="password"
+                           required
+                           autocomplete="off">
+                    <label for="password">密码</label>
+                    <i class="fas fa-lock"></i>
+                </div>
+
+                <button type="submit" class="login-btn">
+                    <span>立即登录</span>
+                    <div class="wave"></div>
+                </button>
+            </form>
+
+            <div class="additional-links">
+                <a href="{{ url_for('register') }}" class="link">
+                    <i class="fas fa-user-plus"></i>
+                    注册新账号
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 错误弹窗 -->
+<div class="error-overlay" id="errorModal">
+    <div class="error-modal">
+        <div class="modal-icon">!</div>
+        <h3 class="modal-title">登录失败</h3>
+        <p class="modal-message" id="errorMessage"></p>
+        <button class="modal-confirm" onclick="closeError()">确定</button>
+    </div>
+</div>
+
+
+<style>
+/* 基础样式 */
+:root {
+    --primary: #6a1b9a;
+    --secondary: #9c27b0;
+    --accent: #d1c4e9;
+}
+
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f8f5fc 0%, #e1bee7 100%);
+    padding: 2rem;
+}
+
+.login-card {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+/* 装饰元素 */
+.decorative-circle {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    background: rgba(106,27,154,0.1);
+    border-radius: 50%;
+    top: -80px;
+    right: -80px;
+}
+
+.decorative-wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    opacity: 0.15;
+}
+
+/* 卡片内容 */
+.card-content {
+    position: relative;
+    padding: 2.5rem;
+    z-index: 1;
+}
+
+.brand-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.logo {
+    width: 60px;
+    height: 60px;
+    background: var(--primary);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+h1 {
+    color: var(--primary);
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+/* 输入框样式 */
+.input-field {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.input-field input {
+    width: 100%;
+    padding: 1rem 1rem 1rem 3rem;
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.input-field input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(106,27,154,0.2);
+}
+
+.input-field label {
+    position: absolute;
+    left: 3rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.input-field input:focus + label,
+.input-field input:not(:placeholder-shown) + label {
+    transform: translateY(-140%);
+    left: 1rem;
+    font-size: 0.9rem;
+    color: var(--primary);
+}
+
+.fa-user, .fa-lock {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary);
+}
+
+/* 登录按钮 */
+.login-btn {
+    position: relative;
+    width: 100%;
+    padding: 1.2rem;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+}
+
+.wave {
+    position: absolute;
+    top: -100%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255,255,255,0.1);
+    transform: rotate(45deg);
+    animation: wave 2s infinite linear;
+}
+
+@keyframes wave {
+    0% { transform: translateY(0) rotate(45deg); }
+    100% { transform: translateY(100%) rotate(45deg); }
+}
+
+/* 附加链接 */
+.additional-links {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.link {
+    color: var(--primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.link:hover {
+    color: var(--secondary);
+    transform: translateX(5px);
+}
+
+/* 欢迎弹窗 */
+.welcome-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: relative;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2rem;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 400px;
+    animation: modalEnter 0.5s ease;
+}
+
+@keyframes modalEnter {
+    from { opacity: 0; transform: translate(-50%, -40%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.modal-content i {
+    font-size: 4rem;
+    color: #2ecc71;
+    margin-bottom: 1rem;
+}
+
+.modal-content h2 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+.modal-close {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.8rem 2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    background: var(--secondary);
+    transform: translateY(-2px);
+}
+
+/* 输入框标签动画 */
+.input-field label {
+    position: absolute;
+    left: 3rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    will-change: transform, font-size;
+    background: linear-gradient(0deg,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0) 50%,
+        white 51%);
+}
+
+.input-field input:focus + label,
+.input-field input:not(:placeholder-shown) + label {
+    transform: translateY(-150%) scale(0.9);
+    left: 1rem;
+    font-size: 0.9rem;
+    color: var(--primary);
+    background: linear-gradient(0deg,
+        rgba(255,255,255,0) 0%,
+        white 30%);
+}
+
+.input-field input:valid + label {
+    animation: labelBounce 0.6s ease;
+}
+
+@keyframes labelBounce {
+    0%, 100% { transform: translateY(-150%) scale(0.9); }
+    50% { transform: translateY(-170%) scale(0.95); }
+}
+/* 错误弹窗容器 */
+.error-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 弹窗主体 */
+.error-modal {
+    background: white;
+    border-radius: 12px;
+    width: 320px;
+    padding: 24px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    animation: modalSlideIn 0.3s ease-out;
+    position: relative;
+}
+
+/* 动画效果 */
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 图标样式 */
+.modal-icon {
+    width: 48px;
+    height: 48px;
+    background: #dc3545;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+/* 文字样式 */
+.modal-title {
+    color: #dc3545;
+    font-size: 20px;
+    text-align: center;
+    margin: 0 0 12px;
+}
+
+.modal-message {
+    color: #6c757d;
+    font-size: 15px;
+    text-align: center;
+    line-height: 1.5;
+    margin: 0 0 24px;
+}
+
+/* 确认按钮 */
+.modal-confirm {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 32px;
+    border-radius: 25px;
+    font-size: 14px;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    transition: all 0.2s;
+}
+
+.modal-confirm:hover {
+    background: #bb2d3b;
+    transform: scale(1.05);
+}
+</style>
+
+<script>
+// 显示错误弹窗
+function showError(message) {
+    const modal = document.getElementById('errorModal');
+    document.getElementById('errorMessage').textContent = message;
+
+    // 显示弹窗
+    modal.style.display = 'flex';
+
+    // 添加点击遮罩关闭
+    modal.onclick = function(e) {
+        if(e.target === modal) closeError();
+    }
+
+    // ESC键关闭
+    document.addEventListener('keydown', function escClose(e) {
+        if(e.key === 'Escape') {
+            closeError();
+            document.removeEventListener('keydown', escClose);
+        }
+    });
+}
+
+// 关闭弹窗
+function closeError() {
+    const modal = document.getElementById('errorModal');
+    modal.style.display = 'none';
+    document.getElementById('username').focus(); // 自动聚焦到用户名输入框
+}
+
+// 初始化检查错误消息
+document.addEventListener('DOMContentLoaded', function() {
+    {% with messages = get_flashed_messages(category_filter=["error"]) %}
+        {% if messages %}
+            showError("{{ messages[0] }}");
+        {% endif %}
+    {% endwith %}
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,219 @@
+{% extends "layout.html" %}
+{% block title %}新建课程{% endblock %}
+{% block content %}
+<div class="card admin-form-card">
+    <!-- 头部导航 -->
+    <div class="form-header">
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">
+            ← 返回管理主页
+        </a>
+        <h2>创建新课程</h2>
+    </div>
+
+    <!-- 表单主体 -->
+    <form method="POST" class="course-form">
+        <div class="form-group">
+            <label for="name">课程名称</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   placeholder="请输入课程名称"
+                   class="modern-input"
+                   required>
+        </div>
+
+        <div class="form-group">
+            <label for="teacher_id">授课教师</label>
+            <select id="teacher_id"
+                    name="teacher_id"
+                    class="modern-select"
+                    required>
+                <option value="">请选择授课教师</option>
+                {% for teacher in teachers %}
+                <option value="{{ teacher.id }}">{{ teacher.fullname }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="time">上课时间</label>
+                <input type="text"
+                       id="time"
+                       name="time"
+                       placeholder="例：周一 1-2节"
+                       class="modern-input"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label for="location">上课地点</label>
+                <input type="text"
+                       id="location"
+                       name="location"
+                       placeholder="例：理工楼201"
+                       class="modern-input"
+                       required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="credit">课程学分</label>
+            <input type="number"
+                   id="credit"
+                   name="credit"
+                   placeholder="请输入学分"
+                   min="1"
+                   class="modern-input"
+                   required>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-secondary" type="reset">重置</button>
+            <button class="btn btn-primary" type="submit">创建课程</button>
+        </div>
+    </form>
+</div>
+
+<style>
+/* 卡片容器 */
+.admin-form-card {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+/* 头部样式 */
+.form-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.form-header h2 {
+    color: #6a1b9a;
+    margin: 1rem 0 0;
+}
+
+.back-link {
+    color: #666;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.back-link:hover {
+    color: #6a1b9a;
+}
+
+/* 表单布局 */
+.course-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+/* 表单元素 */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+label {
+    color: #444;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.modern-input,
+.modern-select {
+    padding: 0.8rem 1.2rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.modern-input:focus,
+.modern-select:focus {
+    border-color: #6a1b9a;
+    outline: none;
+    box-shadow: 0 0 8px rgba(106,27,154,0.15);
+}
+
+.modern-select {
+    appearance: none;
+    background: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e")
+                no-repeat right 1rem center/15px;
+}
+
+/* 按钮区域 */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #f0f0f0;
+}
+
+.btn-primary {
+    background: #6a1b9a;
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #666;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background: #4a148c;
+    transform: translateY(-1px);
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .admin-form-card {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}
