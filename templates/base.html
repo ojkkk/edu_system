@@ -1,109 +1,65 @@
-from flask import Flask, render_template, redirect, url_for, request, session, abort
-import pymysql
-from datetime import time
+{% block content %}
+<div class="card">
+    <!-- 新增消息提示容器 -->
+    <div id="messageContainer" class="message-area">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
 
-app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # 设置安全密钥
+    <h2>已选课程</h2>
+    <table class="course-table">
+        <!-- 原有表格内容保持不变 -->
+    </table>
+</div>
 
-# 注册时间格式化过滤器（与之前解决方案一致）
-@app.template_filter('format_time')
-def format_time_filter(value):
-    if isinstance(value, time):
-        return value.strftime('%H:%M')
-    elif isinstance(value, str) and len(value) >= 5:
-        return value[:5]
-    return value
+<style>
+/* 新增消息样式 */
+.message-area {
+    margin-bottom: 1.5rem;
+}
 
-# 课程列表路由
-@app.route('/admin/courses')
-def manage_courses():
-    # 权限验证
-    if 'role' not in session or session['role'] != 'admin':
-        abort(403)  # 禁止无权限访问
+.alert {
+    padding: 0.75rem 1.25rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
 
-    conn = None
-    try:
-        conn = get_db_connection()  # 假设已实现数据库连接方法
-        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
-            # 获取课程详细信息
-            cursor.execute('''
-                SELECT
-                    c.id,
-                    c.name,
-                    c.credit,
-                    d.name AS department_name,
-                    u.fullname AS teacher_name,
-                    ts.weekday,
-                    ts.start_time,
-                    ts.end_time,
-                    cl.building,
-                    cl.room_number
-                FROM courses c
-                JOIN departments d ON c.department_id = d.id
-                JOIN users u ON c.teacher_id = u.id
-                JOIN time_slots ts ON c.time_slot_id = ts.id
-                JOIN classrooms cl ON c.classroom_id = cl.id
-                ORDER BY c.id DESC
-            ''')
-            courses = cursor.fetchall()
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
 
-        return render_template('course_management.html', courses=courses)
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
 
-    except pymysql.Error as e:
-        print(f"数据库错误: {e}")
-        return render_template('error.html', message="课程数据加载失败"), 500
-    finally:
-        if conn:
-            conn.close()
+.btn-close {
+    padding: 0.5rem;
+    margin-left: 1rem;
+}
+</style>
 
-# 删除课程路由
-@app.route('/delete-course', methods=['POST'])
-def delete_course():
-    # 管理员权限验证
-    if 'role' not in session or session['role'] != 'admin':
-        abort(403)
-
-    course_id = request.form.get('course_id')
-    if not course_id or not course_id.isdigit():
-        return "无效的课程ID", 400
-
-    conn = None
-    try:
-        conn = get_db_connection()
-        with conn.cursor() as cursor:
-            # 检查关联选课记录
-            cursor.execute('''
-                SELECT COUNT(*) AS enroll_count
-                FROM enrollments
-                WHERE course_id = %s
-            ''', (course_id,))
-            result = cursor.fetchone()
-
-            if result['enroll_count'] > 0:
-                return "请先删除相关选课记录", 400
-
-            # 执行删除
-            cursor.execute('DELETE FROM courses WHERE id = %s', (course_id,))
-            conn.commit()
-
-        return redirect(url_for('manage_courses'))
-
-    except pymysql.Error as e:
-        print(f"删除失败: {e}")
-        if conn:
-            conn.rollback()
-        return "课程删除失败", 500
-    finally:
-        if conn:
-            conn.close()
-
-def get_db_connection():
-    """示例数据库连接方法，需根据实际配置修改"""
-    return pymysql.connect(
-        host='localhost',
-        user='your_username',
-        password='your_password',
-        database='course_system',
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
+<script>
+// 自动隐藏消息（5秒后）
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}

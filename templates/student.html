@@ -9,7 +9,18 @@
         <p><span class="info-label">邮箱：</span>{{ student.email }}</p>
     </div>
 </div>
+<div id="messageContainer" class="message-area">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
 
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
 <div class="card">
     <h3>已选课程</h3>
     <div class="enrolled-courses">
@@ -21,6 +32,7 @@
                     <th>上课地点</th>
                     <th>学分</th>
                     <th>成绩状态</th>
+                    <th>    </th>
                 </tr>
             </thead>
             <tbody>
@@ -34,6 +46,15 @@
                         <span class="usual-grade">{{ course.usual_grade or '待录入' }}</span> /
                         <span class="final-grade">{{ course.final_grade or '待考试' }}</span>
                         <div class="total-grade">总评：{{ course.total_grade | round(1) if course.total_grade else '-' }}</div>
+                    </td>
+                    <td class="actions">
+
+                        <form method="POST"
+                                action="{{ url_for('unenroll') }}"
+                              onsubmit="return confirm('确定要退选【{{ course.name }}】课程吗？')">
+                                <input type="hidden" name="course_id" value="{{ course.id }}">
+                                 <button type="submit" class="btn btn-warning">退课</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -178,5 +199,52 @@
     color: #666;
     font-size: 0.9em;
 }
+.btn-warning {
+    background-color: #ffc107;
+    color: #000;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+}
+.message-area {
+    margin-bottom: 1.5rem;
+}
+
+.alert {
+    padding: 0.75rem 1.25rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.btn-close {
+    padding: 0.5rem;
+    margin-left: 1rem;
+}
 </style>
+<script>document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            alert.style.opacity = '0';
+            setTimeout(() => alert.remove(), 500);
+        });
+    }, 5000);
+});</script>
 {% endblock %}

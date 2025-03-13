@@ -584,11 +584,7 @@ def admin_add_course():
             cursor.execute('SELECT id, name FROM departments')
             departments = cursor.fetchall()
 
-        return render_template('admin_add_course.html',
-                               teachers=teachers,
-                               classrooms=classrooms,
-                               time_slots=time_slots,
-                               departments=departments)
+
 
     except pymysql.Error as e:
         print("Database error:", e)
@@ -596,6 +592,12 @@ def admin_add_course():
         return "操作失败，请稍后再试", 500
     finally:
         conn.close()
+    return render_template('admin_add_course.html',
+                           teachers=teachers,
+                           classrooms=classrooms,
+                           time_slots=time_slots,
+                           departments=departments)
+
 
 
 @app.route('/check_availability')
@@ -603,22 +605,30 @@ def check_availability():
     classroom_id = request.args.get('classroom')
     time_slot_id = request.args.get('timeslot')
 
-    conn = get_db_connection()
     try:
+        conn = get_db_connection()
         with conn.cursor() as cursor:
             cursor.execute('''
-                SELECT c.name, u.fullname 
-                FROM courses c
-                JOIN users u ON c.teacher_id = u.id
-                WHERE c.classroom_id = %s AND c.time_slot_id = %s
-            ''', (classroom_id, time_slot_id))
+                        SELECT
+                            co.name AS course_name,
+                            u.fullname AS teacher_name
+                        FROM courses co
+                        JOIN users u ON co.teacher_id = u.id
+                        WHERE co.classroom_id = %s
+                        AND co.time_slot_id = %s
+                        LIMIT 1
+                    ''', (classroom_id, time_slot_id))
+
             conflict = cursor.fetchone()
 
-            return jsonify({
-                'available': not conflict,
-                'conflict_course': conflict[0] if conflict else None,
-                'teacher': conflict[1] if conflict else None
+            if conflict:
+                return jsonify({
+                'available': False,
+                'conflict_course': conflict['course_name'],
+                'teacher': conflict['teacher_name']
             })
+            else:
+                return jsonify({'available': True})
     except pymysql.Error as e:
         return jsonify({'error': str(e)}), 500
     finally:
@@ -785,5 +795,56 @@ def format_time_filter(value):
     except Exception as e:
         print(f"时间格式化错误：{str(e)}")
         return value  # 保持原始值不变
+
+
+@app.route('/unenroll', methods=['POST'])
+def unenroll():
+
+
+
+
+    student_id = session['user_id']
+    course_id = request.form.get('course_id')
+
+    # 基本参数验证
+    if not course_id or not course_id.isdigit():
+        flash('无效的课程ID', 'danger')
+        return redirect(url_for('student_dashboard'))
+
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            # 验证选课关系
+            cursor.execute('''
+                SELECT id 
+                FROM enrollments 
+                WHERE student_id = %s 
+                AND course_id = %s
+                AND final_grade IS NULL  # 仅允许退未结课课程
+            ''', (student_id, course_id))
+            enrollment = cursor.fetchone()
+
+            if not enrollment:
+                flash('未找到选课记录或课程已结课', 'warning')
+                return redirect(url_for('student_dashboard'))
+
+            # 执行退课
+            cursor.execute('''
+                DELETE FROM enrollments 
+                WHERE id = %s
+            ''', (enrollment['id'],))
+
+            conn.commit()
+            flash('退课成功', 'success')
+
+    except pymysql.Error as e:
+        print(f"退课失败: {e}")
+        flash('退课操作失败，请联系管理员', 'danger')
+        conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+    return redirect(url_for('student_dashboard'))
 if __name__ == '__main__':
     app.run(debug=True)
