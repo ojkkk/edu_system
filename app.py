@@ -845,6 +845,7 @@ def unenroll():
         if conn:
             conn.close()
 
+
     return redirect(url_for('student_dashboard'))
 if __name__ == '__main__':
     app.run(debug=True)
