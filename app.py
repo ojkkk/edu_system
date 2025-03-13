@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 import pymysql.cursors
 import os
-
+from datetime import datetime, time
 
 
 
@@ -31,30 +31,88 @@ def home():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
+        # 获取基础信息
         username = request.form['username']
-        password = request.form['password']
+        password = request.form['password']  # 建议后续增加密码加密
         role = request.form['role']
         fullname = request.form['fullname']
         email = request.form['email']
+        department_id = request.form.get('department_id')
+
+        # 验证学院选择（学生/教师必须选择）
+        if role in ['student', 'teacher'] and not department_id:
+            return render_template('register.html',
+                                   error="必须选择所属学院",
+                                   departments=get_departments())
+
+        # 验证管理员不需要学院
+        if role == 'admin' and department_id:
+            return render_template('register.html',
+                                   error="管理员无需选择学院",
+                                   departments=get_departments())
 
         try:
             conn = get_db_connection()
             with conn.cursor() as cursor:
+                # 检查用户名唯一性
                 cursor.execute('SELECT id FROM users WHERE username = %s', (username,))
                 if cursor.fetchone():
-                    return 'Username exists!'
-                cursor.execute('''
-                    INSERT INTO users (username, password, role, fullname, email)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (username, password, role, fullname, email))
-            conn.commit()
+                    return render_template('register.html',
+                                           error="用户名已存在",
+                                           departments=get_departments())
+
+                # 构建插入语句
+                insert_sql = '''
+                    INSERT INTO users 
+                    (username, password, role, fullname, email, department_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''' if role != 'admin' else '''
+                    INSERT INTO users 
+                    (username, password, role, fullname, email,department_id)
+                    VALUES (%s, %s, %s, %s, %s, 2)
+                '''
+
+                # 执行插入
+                if role == 'admin':
+                    cursor.execute(insert_sql,
+                                   (username, password, role, fullname, email))
+                else:
+                    # 验证学院有效性
+                    cursor.execute('SELECT id FROM departments WHERE id = %s', (department_id,))
+                    if not cursor.fetchone():
+                        return render_template('register.html',
+                                               error="无效的学院选择",
+                                               departments=get_departments())
+
+                    cursor.execute(insert_sql,
+                                   (username, password, role, fullname, email, department_id))
+
+                conn.commit()
+                return redirect(url_for('login'))
+
         except pymysql.Error as e:
             print("Database error:", e)
-            return "Registration failed"
+            return render_template('register.html',
+                                   error="注册失败，请检查输入",
+                                   departments=get_departments())
         finally:
             conn.close()
-        return redirect(url_for('login'))
-    return render_template('register.html')
+
+    # GET请求获取学院列表
+    return render_template('register.html', departments=get_departments())
+
+
+def get_departments():
+    """获取所有学院信息的工具函数"""
+    try:
+        conn = get_db_connection()
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT id, name FROM departments')
+            return cursor.fetchall()
+    except pymysql.Error:
+        return []
+    finally:
+        conn.close()
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -108,49 +166,84 @@ def student_dashboard():
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            # 获取学生信息
-            cursor.execute('SELECT fullname, email FROM users WHERE id = %s', (session['user_id'],))
+            # 获取学生学院信息
+            cursor.execute('''
+                SELECT 
+                    u.fullname, 
+                    u.email, 
+                    u.department_id,
+                    d.name AS department_name
+                FROM users u
+                JOIN departments d ON u.department_id = d.id
+                WHERE u.id = %s
+            ''', (session['user_id'],))
             student_info = cursor.fetchone()
 
-            # 查询成绩时获取两个分数
-            cursor.execute(
-                ''' SELECT c.id, c.name,c.time, c.location, c.credit, e.usual_grade, e.final_grade, (e.usual_grade * 0.3 + e.final_grade * 0.7) AS total_grade 
-                FROM enrollments e 
-                JOIN courses c ON e.course_id = c.id 
-                WHERE e.student_id = %s 
-                ''',(session['user_id'],))
+            if not student_info or not student_info['department_id']:
+                return render_template('error.html',
+                                    message="未分配学院，请联系管理员")
+
+            # 已选课程查询（包含详细成绩信息）
+            cursor.execute('''
+                SELECT 
+                    c.id,
+                    c.name,
+                    c.credit,
+                    cl.building,
+                    cl.room_number,
+                    ts.weekday,
+                    DATE_FORMAT(ts.start_time, '%%H:%%i') AS start_time,
+                    DATE_FORMAT(ts.end_time, '%%H:%%i') AS end_time,
+                    e.usual_grade,
+                    e.final_grade,
+                    ROUND((e.usual_grade * 0.3 + e.final_grade * 0.7), 1) AS total_grade
+                FROM enrollments e
+                JOIN courses c ON e.course_id = c.id
+                JOIN classrooms cl ON c.classroom_id = cl.id
+                JOIN time_slots ts ON c.time_slot_id = ts.id
+                WHERE e.student_id = %s
+            ''', (session['user_id'],))
             enrolled = cursor.fetchall()
 
-
-
-            # 可选课程
+            # 可选课程查询（学院限制+容量验证）
             cursor.execute('''
                 SELECT 
                     c.id AS course_id,
                     c.name AS course_name,
                     c.credit,
-                    c.time,
-                    c.location,
-                    u.fullname AS teacher_name  # 新增教师姓名字段
+                    cl.building,
+                    cl.room_number,
+                    ts.weekday,
+                    DATE_FORMAT(ts.start_time, '%%H:%%i') AS start_time,
+                    DATE_FORMAT(ts.end_time, '%%H:%%i') AS end_time,
+                    u.fullname AS teacher_name,
+                    cl.capacity,
+                    (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) AS enrolled_count,
+                    cl.capacity - (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) AS remaining
                 FROM courses c
-                JOIN users u ON c.teacher_id = u.id  # 关键关联语句
-                WHERE c.id NOT IN (
+                JOIN users u ON c.teacher_id = u.id
+                JOIN classrooms cl ON c.classroom_id = cl.id
+                JOIN time_slots ts ON c.time_slot_id = ts.id
+                WHERE c.department_id = %s
+                AND c.id NOT IN (
                     SELECT course_id 
                     FROM enrollments 
                     WHERE student_id = %s
                 )
-            ''', (session['user_id'],))
+                AND (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) < cl.capacity
+            ''', (student_info['department_id'], session['user_id']))
             available = cursor.fetchall()
+
     except pymysql.Error as e:
         print("Database error:", e)
-        return "Error loading dashboard"
+        return render_template('error.html', message="数据加载失败")
     finally:
         conn.close()
 
     return render_template('student.html',
-                           student=student_info,
-                           enrolled=enrolled,
-                           available=available)
+                         student=student_info,
+                         enrolled=enrolled,
+                         available=available)
 
 
 @app.route('/student/enroll', methods=['POST'])
@@ -188,30 +281,45 @@ def teacher_dashboard():
     try:
         conn = get_db_connection()
         with conn.cursor() as cursor:
-            # 教师信息
-            cursor.execute('SELECT fullname, email FROM users WHERE id = %s', (session['user_id'],))
+            # 获取教师完整信息（含学院）
+            cursor.execute('''
+                SELECT 
+                    u.fullname,
+                    u.email,
+                    d.name AS department_name
+                FROM users u
+                JOIN departments d ON u.department_id = d.id
+                WHERE u.id = %s
+            ''', (session['user_id'],))
             teacher_info = cursor.fetchone()
 
-            # 所授课程
+            # 获取教师所授课程（包含详细时间地点）
             cursor.execute('''
-                                   SELECT 
-                                       c.id,
-                                       c.name,
-                                       c.time,
-                                       c.location,
-                                       c.credit,
-                                       u.fullname AS teacher_name,
-                                       COUNT(e.student_id) AS student_count
-                                   FROM courses c
-                                   JOIN users u ON c.teacher_id = u.id
-                                   LEFT JOIN enrollments e ON c.id = e.course_id
-                                   WHERE c.teacher_id = %s
-                                   GROUP BY c.id
-                               ''', (session['user_id'],))
+                    SELECT 
+                        c.id,
+                        c.name,
+                        c.credit,
+                        d.name AS department_name,
+                        ts.weekday,
+                        DATE_FORMAT(ts.start_time, '%%H:%%i') AS start_time,
+                        DATE_FORMAT(ts.end_time, '%%H:%%i') AS end_time,
+                        cl.building,
+                        cl.room_number,
+                        cl.capacity,
+                        (SELECT COUNT(*) 
+                         FROM enrollments 
+                         WHERE course_id = c.id) AS student_count
+                    FROM courses c
+                    JOIN departments d ON c.department_id = d.id
+                    JOIN classrooms cl ON c.classroom_id = cl.id
+                    JOIN time_slots ts ON c.time_slot_id = ts.id
+                    WHERE c.teacher_id = %s
+                ''', (session['user_id'],))
             courses = cursor.fetchall()
+
     except pymysql.Error as e:
         print("Database error:", e)
-        return "Error loading dashboard"
+        return render_template('error.html', message="数据加载失败")
     finally:
         conn.close()
 
@@ -334,10 +442,24 @@ def admin_dashboard():
         conn = get_db_connection()
         with conn.cursor() as cursor:
             cursor.execute('''
-                SELECT c.*, u.fullname AS teacher_name 
-                FROM courses c 
-                JOIN users u ON c.teacher_id = u.id
-            ''')
+                            SELECT 
+                                c.id,
+                                c.name,
+                                c.credit,
+                                d.name AS department_name,
+                                u.fullname AS teacher_name,
+                                ts.weekday,
+                                ts.start_time,
+                                ts.end_time,
+                                cl.building,
+                                cl.room_number
+                            FROM courses c
+                            JOIN departments d ON c.department_id = d.id
+                            JOIN users u ON c.teacher_id = u.id
+                            JOIN time_slots ts ON c.time_slot_id = ts.id
+                            JOIN classrooms cl ON c.classroom_id = cl.id
+                            ORDER BY c.id DESC
+                        ''')
             courses = cursor.fetchall()
     except pymysql.Error as e:
         print("Database error:", e)
@@ -364,46 +486,143 @@ def manage_users():
         return "Error loading users"
     finally:
         conn.close()
+
+
 @app.route('/admin/add_course', methods=['GET', 'POST'])
 def admin_add_course():
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
 
-    if request.method == 'POST':
-        name = request.form['name']
-        teacher_id = request.form['teacher_id']
-        time = request.form['time']
-        location = request.form['location']
-        credit = request.form['credit']
+    conn = get_db_connection()
+    try:
+        if request.method == 'POST':
+            # 获取表单数据
+            name = request.form['name']
+            teacher_id = request.form['teacher_id']
+            classroom_id = request.form['classroom_id']
+            time_slot_id = request.form['time_slot_id']
+            credit = request.form['credit']
+            department_id = request.form['department_id']
 
-        try:
-            conn = get_db_connection()
+            # 验证教师有效性
+            with conn.cursor() as cursor:
+                cursor.execute('''
+                    SELECT id, department_id 
+                    FROM users 
+                    WHERE id = %s AND role = 'teacher'
+                ''', (teacher_id,))
+                teacher = cursor.fetchone()
+                if not teacher:
+                    return "教师不存在", 400
+
+                # 验证教师学院匹配
+                if teacher['department_id'] != int(department_id):
+                    return "教师所属学院与课程学院不匹配", 400
+
+            # 验证学院有效性
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT id FROM departments WHERE id = %s', (department_id,))
+                if not cursor.fetchone():
+                    return "无效的学院选择", 400
+
+            # 检查时间冲突（保持原有逻辑）
+            with conn.cursor() as cursor:
+                cursor.execute('''
+                    SELECT c.name, u.fullname 
+                    FROM courses c
+                    JOIN users u ON c.teacher_id = u.id
+                    WHERE c.classroom_id = %s AND c.time_slot_id = %s
+                ''', (classroom_id, time_slot_id))
+                if conflict := cursor.fetchone():
+                    return jsonify(
+                        available=False,
+                        conflict_course=conflict['name'],
+                        teacher=conflict['fullname']
+                    ), 409
+
+            # 插入课程数据
             with conn.cursor() as cursor:
                 cursor.execute('''
                     INSERT INTO courses 
-                    (name, teacher_id, time, location, credit)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (name, teacher_id, time, location, credit))
-            conn.commit()
-        except pymysql.Error as e:
-            print("Database error:", e)
-            return "Course creation failed"
-        finally:
-            conn.close()
-        return redirect(url_for('admin_dashboard'))
+                    (name, teacher_id, classroom_id, time_slot_id, credit, department_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (name, teacher_id, classroom_id, time_slot_id, credit, department_id))
+                conn.commit()
+            return redirect(url_for('admin_dashboard'))
 
-    try:
-        conn = get_db_connection()
-        with conn.cursor() as cursor:
-            cursor.execute('SELECT id, fullname FROM users WHERE role = "teacher"')
+        # GET请求获取数据
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            # 教师列表（带学院信息）
+            cursor.execute('''
+                SELECT u.id, u.fullname, d.name AS department 
+                FROM users u
+                JOIN departments d ON u.department_id = d.id
+                WHERE u.role = 'teacher'
+            ''')
             teachers = cursor.fetchall()
+
+            # 教室列表
+            cursor.execute('''
+                SELECT id, 
+                       CONCAT(building, ' ', room_number) AS name,
+                       capacity
+                FROM classrooms
+            ''')
+            classrooms = cursor.fetchall()
+
+            # 时间段列表
+            cursor.execute('''
+                SELECT id,
+                       CONCAT(weekday, ' ', 
+                              DATE_FORMAT(start_time, '%H:%i'), '-',
+                              DATE_FORMAT(end_time, '%H:%i')) AS time_slot
+                FROM time_slots
+            ''')
+            time_slots = cursor.fetchall()
+
+            # 学院列表
+            cursor.execute('SELECT id, name FROM departments')
+            departments = cursor.fetchall()
+
+        return render_template('admin_add_course.html',
+                               teachers=teachers,
+                               classrooms=classrooms,
+                               time_slots=time_slots,
+                               departments=departments)
+
     except pymysql.Error as e:
         print("Database error:", e)
-        return "Error loading teachers"
+        conn.rollback()
+        return "操作失败，请稍后再试", 500
     finally:
         conn.close()
 
-    return render_template('admin_add_course.html', teachers=teachers)
+
+@app.route('/check_availability')
+def check_availability():
+    classroom_id = request.args.get('classroom')
+    time_slot_id = request.args.get('timeslot')
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('''
+                SELECT c.name, u.fullname 
+                FROM courses c
+                JOIN users u ON c.teacher_id = u.id
+                WHERE c.classroom_id = %s AND c.time_slot_id = %s
+            ''', (classroom_id, time_slot_id))
+            conflict = cursor.fetchone()
+
+            return jsonify({
+                'available': not conflict,
+                'conflict_course': conflict[0] if conflict else None,
+                'teacher': conflict[1] if conflict else None
+            })
+    except pymysql.Error as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
 
 
 @app.route('/admin/delete_course', methods=['POST'])
@@ -467,37 +686,104 @@ def admin_add_user():
     if 'user_id' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
 
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        role = request.form['role']
-        fullname = request.form['fullname']
-        email = request.form['email']
+    conn = get_db_connection()
+    try:
+        if request.method == 'POST':
+            # 获取表单数据
+            username = request.form['username']
+            password = request.form['password']
+            role = request.form['role']
+            fullname = request.form['fullname']
+            email = request.form['email']
+            department_id = request.form.get('department_id')
 
-        try:
-            conn = get_db_connection()
+            # 验证学院选择
+            if role in ['student', 'teacher'] and not department_id:
+                return render_template('admin_add_user.html',
+                                     departments=get_departments(),
+                                     error="必须选择所属学院")
+
+            # 验证管理员无学院
+            if role == 'admin' and department_id:
+                return render_template('admin_add_user.html',
+                                     departments=get_departments(),
+                                     error="管理员无需选择学院")
+
             with conn.cursor() as cursor:
-                # 检查用户名是否已存在
+                # 检查用户名唯一性
                 cursor.execute('SELECT id FROM users WHERE username = %s', (username,))
                 if cursor.fetchone():
+                    return render_template('admin_add_user.html',
+                                         departments=get_departments(),
+                                         error="用户名已存在")
 
-                    return redirect(url_for('admin_add_user'))
+                # 验证学院有效性
+                if role in ['student', 'teacher']:
+                    cursor.execute('SELECT id FROM departments WHERE id = %s', (department_id,))
+                    if not cursor.fetchone():
+                        return render_template('admin_add_user.html',
+                                             departments=get_departments(),
+                                             error="无效的学院选择")
 
-                cursor.execute('''
-                    INSERT INTO users 
-                    (username, password, role, fullname, email)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (username, password, role, fullname, email))
+                # 构建插入语句
+                if role == 'admin':
+                    insert_sql = '''
+                        INSERT INTO users 
+                        (username, password, role, fullname, email)
+                        VALUES (%s, %s, %s, %s, %s)
+                    '''
+                    params = (username, password, role, fullname, email)
+                else:
+                    insert_sql = '''
+                        INSERT INTO users 
+                        (username, password, role, fullname, email, department_id)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    '''
+                    params = (username, password, role, fullname, email, department_id)
+
+                # 执行插入
+                cursor.execute(insert_sql, params)
                 conn.commit()
-
                 return redirect(url_for('manage_users'))
-        except pymysql.Error as e:
-            print("Database error:", e)
 
-        finally:
-            conn.close()
+        # GET请求获取学院数据
+        return render_template('admin_add_user.html',
+                             departments=get_departments())
 
-    return render_template('admin_add_user.html')
+    except pymysql.Error as e:
+        print("Database error:", e)
+        return render_template('admin_add_user.html',
+                             departments=get_departments(),
+                             error="数据库操作失败")
+    finally:
+        conn.close()
 
+
+
+
+
+
+
+
+# 自定义时间格式化过滤器
+@app.template_filter('format_time')
+def format_time_filter(value):
+    """将时间值格式化为 HH:MM 格式"""
+    try:
+        # 处理数据库返回的time对象
+        if isinstance(value, time):
+            return value.strftime('%H:%M')
+
+        # 处理字符串格式的时间（如MySQL返回的字符串）
+
+        if str(value)[4] == ':':  # 处理 'HH:MM:SS' 或 'HH:MM' 格式
+            return str(value)[:4]
+        else: return str(value)[:5]
+
+        # 处理其他意外类型
+        #return str(value)[:4]  # 保险措施
+    except Exception as e:
+        print(f"时间格式化错误：{str(e)}")
+        return value  # 保持原始值不变
 if __name__ == '__main__':
     app.run(debug=True)

@@ -11,68 +11,111 @@
     </div>
 
     <!-- 表单主体 -->
-    <form method="POST" class="course-form">
-        <div class="form-group">
-            <label for="name">课程名称</label>
-            <input type="text"
-                   id="name"
-                   name="name"
-                   placeholder="请输入课程名称"
-                   class="modern-input"
-                   required>
-        </div>
+   <form method="POST" class="course-form" id="courseForm">
+    <div class="form-group">
+        <label for="name">课程名称</label>
+        <input type="text"
+               id="name"
+               name="name"
+               placeholder="请输入课程名称"
+               class="modern-input"
+               required
+               maxlength="100">
+    </div>
 
+    <!-- 新增学院选择 -->
+    <div class="form-group">
+        <label for="department_id">所属学院</label>
+        <select id="department_id"
+                name="department_id"
+                class="modern-select"
+                required
+                onchange="filterTeachers()">
+            <option value="">请选择学院</option>
+            {% for dept in departments %}
+            <option value="{{ dept.id }}">{{ dept.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="teacher_id">授课教师</label>
+        <select id="teacher_id"
+                name="teacher_id"
+                class="modern-select"
+                required>
+            <option value="">请选择授课教师</option>
+            {% for teacher in teachers %}
+            <option value="{{ teacher.id }}"
+                    data-department="{{ teacher.department_id }}">
+                {{ teacher.fullname }} ({{ teacher.department }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-row">
         <div class="form-group">
-            <label for="teacher_id">授课教师</label>
-            <select id="teacher_id"
-                    name="teacher_id"
+            <label for="time_slot_id">上课时间</label>
+            <select id="time_slot_id"
+                    name="time_slot_id"
                     class="modern-select"
-                    required>
-                <option value="">请选择授课教师</option>
-                {% for teacher in teachers %}
-                <option value="{{ teacher.id }}">{{ teacher.fullname }}</option>
+                    required
+                    onchange="checkAvailability()">
+                <option value="">请选择时间段</option>
+                {% for slot in time_slots %}
+                <option value="{{ slot.id }}"
+                        data-weekday="{{ slot.weekday }}"
+                        data-start="{{ slot.start_time }}"
+                        data-end="{{ slot.end_time }}">
+
+                    {{slot.time_slot}}
+                </option>
                 {% endfor %}
             </select>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label for="time">上课时间</label>
-                <input type="text"
-                       id="time"
-                       name="time"
-                       placeholder="例：周一 1-2节"
-                       class="modern-input"
-                       required>
-            </div>
-
-            <div class="form-group">
-                <label for="location">上课地点</label>
-                <input type="text"
-                       id="location"
-                       name="location"
-                       placeholder="例：理工楼201"
-                       class="modern-input"
-                       required>
-            </div>
-        </div>
-
         <div class="form-group">
-            <label for="credit">课程学分</label>
-            <input type="number"
-                   id="credit"
-                   name="credit"
-                   placeholder="请输入学分"
-                   min="1"
-                   class="modern-input"
-                   required>
+            <label for="classroom_id">上课地点</label>
+            <select id="classroom_id"
+                    name="classroom_id"
+                    class="modern-select"
+                    required
+                    onchange="checkAvailability()">
+                <option value="">请选择教室</option>
+                {% for room in classrooms %}
+                <option value="{{ room.id }}"
+                        data-capacity="{{ room.capacity }}"
+                        data-department="{{ room.department_id }}"
+                        >
+                    {{ room.name }}
+                    (容量: {{ room.capacity }}人)
+                </option>
+                {% endfor %}
+            </select>
         </div>
+    </div>
 
-        <div class="form-actions">
-            <button class="btn btn-secondary" type="reset">重置</button>
-            <button class="btn btn-primary" type="submit">创建课程</button>
-        </div>
-    </form>
+    <div class="form-group">
+        <label for="credit">课程学分</label>
+        <input type="number"
+               id="credit"
+               name="credit"
+               placeholder="请输入学分"
+               min="1"
+               max="10"
+               class="modern-input"
+               required>
+    </div>
+
+    <!-- 冲突提示和容量提示 -->
+    <div id="availabilityAlert" class="alert" style="display:none;"></div>
+
+    <div class="form-actions">
+        <button class="btn btn-secondary" type="reset">重置</button>
+        <button class="btn btn-primary" type="submit">创建课程</button>
+    </div>
+</form>
 </div>
 
 <style>
@@ -216,4 +259,85 @@ label {
     }
 }
 </style>
+<script>
+// 学院选择过滤器
+function filterTeachers() {
+    const deptId = document.getElementById('department_id').value;
+    const teacherSelect = document.getElementById('teacher_id');
+
+    // 过滤教师列表
+    Array.from(teacherSelect.options).forEach(option => {
+        const show = deptId ?
+            option.dataset.department === deptId :
+            !option.value;
+        option.style.display = show ? 'block' : 'none';
+    });
+
+    // 自动选择第一个有效教师
+    const validOptions = Array.from(teacherSelect.options)
+        .filter(opt => opt.style.display !== 'none' && opt.value);
+    if (validOptions.length > 0) {
+        teacherSelect.value = validOptions[0].value;
+    } else {
+        teacherSelect.value = '';
+    }
+
+    // 同步过滤教室
+    filterClassrooms();
+}
+
+// 教室选择过滤器
+function filterClassrooms() {
+    const deptId = document.getElementById('department_id').value;
+    const classroomSelect = document.getElementById('classroom_id');
+
+    Array.from(classroomSelect.options).forEach(option => {
+        const show = deptId ?
+            option.dataset.department === deptId :
+            !option.value;
+        option.style.display = show ? 'block' : 'none';
+    });
+
+    checkAvailability();
+}
+
+// 增强的冲突检查
+function checkAvailability() {
+    const classroom = document.getElementById('classroom_id').value;
+    const timeSlot = document.getElementById('time_slot_id').value;
+    const alertDiv = document.getElementById('availabilityAlert');
+
+    if (!classroom || !timeSlot) return;
+
+    fetch(`/check_availability?classroom=${classroom}&timeslot=${timeSlot}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.available) {
+                alertDiv.style.display = 'none';
+            } else {
+                alertDiv.style.display = 'block';
+                alertDiv.className = 'alert alert-danger';
+                alertDiv.innerHTML = `
+                    ⚠️ 冲突提示：该教室在选定时间段已被占用
+
+                    课程：${data.conflict_course}
+
+                    教师：${data.teacher}
+                `;
+            }
+        });
+}
+
+// 表单提交验证
+document.getElementById('courseForm').addEventListener('submit', function(e) {
+    const deptId = document.getElementById('department_id').value;
+    const teacherDept = document.querySelector('#teacher_id option:checked').dataset.department;
+
+    if (parseInt(deptId) !== parseInt(teacherDept)) {
+       // e.preventDefault();
+       // alert('错误：教师所属学院与课程学院不匹配');
+      //  return false;
+    }
+});
+</script>
 {% endblock %}

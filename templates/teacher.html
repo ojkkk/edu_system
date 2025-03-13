@@ -2,172 +2,205 @@
 {% block title %}教师面板{% endblock %}
 {% block content %}
 <div class="card">
-    <h2>个人信息</h2>
-    <p>姓名：{{ teacher.fullname }}</p>
-    <p>邮箱：{{ teacher.email }}</p>
+    <h2>教师信息</h2>
+    <div class="teacher-info">
+        <p><span class="info-label">学院：</span>{{ teacher.department_name }}</p>
+        <p><span class="info-label">姓名：</span>{{ teacher.fullname }}</p>
+        <p><span class="info-label">邮箱：</span>{{ teacher.email }}</p>
+    </div>
 </div>
 
 <div class="card">
-    <h3>我的课程</h3>
+    <h3>授课课程管理</h3>
     <div class="courses-list">
-    {% for course in courses %}
-    <div class="course-row">
-        <!-- 课程基本信息 -->
-        <div class="course-meta">
-            <div class="main-info">
+        {% for course in courses %}
+        <div class="course-card">
+            <!-- 课程基本信息 -->
+            <div class="course-header">
                 <h4 class="course-name">{{ course.name }}</h4>
-                <span class="teacher">{{ course.teacher_name }}</span>
+                <div class="course-meta">
+                    <span class="credit">{{ course.credit }} 学分</span>
+                    <span class="department">{{ course.department_name }}</span>
+                </div>
             </div>
-            <span class="credit">学分：{{ course.credit }}</span>
-        </div>
 
-        <!-- 横向详情 -->
-        <div class="course-details">
-            <div class="detail-item">
-                <span class="label">时间</span>
-                <span class="value">{{ course.time }}</span>
-            </div>
-            <div class="detail-item">
-                <span class="label">地点</span>
-                <span class="value">{{ course.location }}</span>
-            </div>
-            <div class="detail-item highlight">
-                <span class="label">选课人数</span>
-                <span class="value">{{ course.student_count }}人</span>
+            <!-- 课程详细信息 -->
+            <div class="course-details">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <i class="icon icon-time"></i>
+                        <div>
+                            <div class="label">授课时间</div>
+                            <div class="value">
+                                {{ course.weekday }}
+                                {{ course.start_time|format_time }}-{{ course.end_time|format_time }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-item">
+                        <i class="icon icon-location"></i>
+                        <div>
+                            <div class="label">教室信息</div>
+                            <div class="value">
+                                {{ course.building }} {{ course.room_number }}
+                                <span class="capacity">(容量: {{ course.capacity }}人)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-item highlight">
+                        <i class="icon icon-group"></i>
+                        <div>
+                            <div class="label">选课情况</div>
+                            <div class="value">
+                                <span class="enrolled">{{ course.student_count }} 人已选</span>
+                                <span class="remaining">剩余 {{ course.capacity - course.student_count }} 名额</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <a href="{{ url_for('course_detail', course_id=course.id) }}"
+                   class="action-btn">
+                    成绩管理 →
+                </a>
             </div>
         </div>
-
-        <!-- 操作按钮 -->
-        <a href="{{ url_for('course_detail', course_id=course.id) }}"
-           class="action-btn">
-            管理学生 →
-        </a>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
 
 <style>
-/* 课程列表容器 */
-.courses-list {
-    margin-top: 1.5rem;
+/* 教师信息样式 */
+.teacher-info p {
+    display: flex;
+    margin: 0.8rem 0;
+}
+.info-label {
+    width: 80px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* 课程卡片样式 */
+.course-card {
+    background: white;
     border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
     overflow: hidden;
 }
 
-/* 单行课程容器 */
-.course-row {
-    display: grid;
-    grid-template-columns: 2fr 3fr 1fr;
-    align-items: center;
+.course-header {
     padding: 1.2rem;
-    background: white;
     border-bottom: 1px solid #f0f0f0;
-    transition: all 0.2s;
-}
-
-.course-row:hover {
-    background: #fcfaff;
-    transform: translateX(5px);
-}
-
-/* 元信息部分 */
-.course-meta {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .course-name {
     color: #6a1b9a;
     margin: 0;
-    font-size: 1.1rem;
 }
 
-.teacher {
+.course-meta {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+.credit {
+    background: #f3e5f5;
+    color: #6a1b9a;
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+.department {
     color: #666;
     font-size: 0.9rem;
 }
 
-.credit {
-    background: #f3e5f5;
-    color: #6a1b9a;
-    padding: 0.2rem 0.8rem;
-    border-radius: 12px;
-    font-size: 0.9rem;
-    width: fit-content;
+/* 课程详细信息 */
+.course-details {
+    padding: 1.2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-/* 课程详情横向排列 */
-.course-details {
+.detail-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    padding: 0 1.5rem;
+    gap: 2rem;
+    flex-grow: 1;
 }
 
 .detail-item {
     display: flex;
-    flex-direction: column;
-    padding: 0.5rem 1rem;
-    border-right: 1px solid #eee;
+    align-items: center;
+    gap: 1rem;
 }
-
-.detail-item:last-child {
-    border-right: none;
+.icon {
+    font-size: 1.2rem;
+    color: #6a1b9a;
 }
-
 .label {
     color: #666;
     font-size: 0.9rem;
-    margin-bottom: 0.3rem;
 }
-
 .value {
     color: #333;
     font-weight: 500;
 }
 
+/* 选课情况样式 */
 .highlight .value {
-    color: #6a1b9a;
-    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+.enrolled {
+    color: #4CAF50;
+}
+.remaining {
+    color: #2196F3;
+    font-size: 0.9rem;
 }
 
 /* 操作按钮 */
 .action-btn {
     background: #6a1b9a;
     color: white !important;
-    padding: 0.6rem 1rem;
+    padding: 0.6rem 1.5rem;
     border-radius: 20px;
     text-decoration: none;
-    text-align: center;
     transition: all 0.2s;
     white-space: nowrap;
 }
-
 .action-btn:hover {
     background: #4a148c;
-    box-shadow: 0 3px 6px rgba(106,27,154,0.2);
+    transform: translateX(5px);
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-    .course-row {
+    .course-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.8rem;
+    }
+
+    .detail-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
-        padding: 1.5rem;
     }
 
     .course-details {
-        grid-template-columns: 1fr;
-        padding: 0;
-    }
-
-    .detail-item {
-        border-right: none;
-        border-bottom: 1px solid #eee;
-        padding: 0.5rem 0;
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: flex-start;
     }
 }
 </style>
-</div>
 {% endblock %}

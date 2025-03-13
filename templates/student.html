@@ -3,69 +3,37 @@
 {% block content %}
 <div class="card">
     <h2>个人信息</h2>
-    <p>姓名：{{ student.fullname }}</p>
-    <p>邮箱：{{ student.email }}</p>
+    <div class="student-info">
+        <p><span class="info-label">学院：</span>{{ student.department_name }}</p>
+        <p><span class="info-label">姓名：</span>{{ student.fullname }}</p>
+        <p><span class="info-label">邮箱：</span>{{ student.email }}</p>
+    </div>
 </div>
 
 <div class="card">
     <h3>已选课程</h3>
-    <table>
-        <tr>
-            <th>课程名称</th>
-            <th>时间</th>
-            <th>地点</th>
-            <th>学分</th>
-            <th>平时成绩</th>
-            <th>期末成绩</th>
-            <th>总评成绩</th>
-        </tr>
-        {% for course in enrolled %}
-        <tr>
-            <td>{{ course.name }}</td>
-            <td>{{ course.time }}</td>
-            <td>{{ course.location }}</td>
-            <td>{{ course.credit }}</td>
-            <td>{{ course.usual_grade or '-' }}</td>
-            <td>{{ course.final_grade or '-'}}</td>
-            <td>{{ course.total_grade | round(2) if course.total_grade else '-' }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-</div>
-
-<div class="card">
-  <div class="course-container">
-    <h3>可选课程列表</h3>
-    <div class="course-table-wrapper">
-        <table class="course-table">
+    <div class="enrolled-courses">
+        <table>
             <thead>
                 <tr>
                     <th>课程名称</th>
-                    <th>学分</th>
-                    <th>授课教师</th>
-                    <th>上课时间</th>
+                    <th>时间安排</th>
                     <th>上课地点</th>
-                    <th>操作</th>
+                    <th>学分</th>
+                    <th>成绩状态</th>
                 </tr>
             </thead>
             <tbody>
-                {% for course in available %}
+                {% for course in enrolled %}
                 <tr>
-                    <td>{{ course.course_name }}</td>
+                    <td>{{ course.name }}</td>
+                    <td>{{ course.weekday }} {{ course.start_time }}-{{ course.end_time }}</td>
+                    <td>{{ course.building }}{{ course.room_number }}</td>
                     <td>{{ course.credit }}</td>
-                    <td>{{ course.teacher_name }}</td>
-                    <td>{{ course.time }}</td>
-                    <td>{{ course.location }}</td>
-                    <td>
-                        <form method="POST" action="{{ url_for('enroll') }}">
-                            <input type="hidden" name="course_id" value="{{ course.course_id }}">
-                            <button class="btn-enroll" type="submit">
-                                <svg viewBox="0 0 24 24" width="16" height="16">
-                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                                </svg>
-                                选课
-                            </button>
-                        </form>
+                    <td class="grade-status">
+                        <span class="usual-grade">{{ course.usual_grade or '待录入' }}</span> /
+                        <span class="final-grade">{{ course.final_grade or '待考试' }}</span>
+                        <div class="total-grade">总评：{{ course.total_grade | round(1) if course.total_grade else '-' }}</div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -74,90 +42,141 @@
     </div>
 </div>
 
-
-
-
+<div class="card">
+    <h3>可选课程</h3>
+    <div class="course-list">
+        {% for course in available %}
+        <div class="course-card {% if course.remaining == 0 %}course-full{% endif %}">
+            <div class="course-header">
+                <h4>{{ course.course_name }}</h4>
+                <span class="course-credit">{{ course.credit }}学分</span>
+            </div>
+            <div class="course-meta">
+                <div class="meta-item">
+                    <i class="icon-teacher"></i>
+                    {{ course.teacher_name }}
+                </div>
+                <div class="meta-item">
+                    <i class="icon-time"></i>
+                    {{ course.weekday }} {{ course.start_time }}-{{ course.end_time }}
+                </div>
+                <div class="meta-item">
+                    <i class="icon-location"></i>
+                    {{ course.building }}{{ course.room_number }}
+                </div>
+            </div>
+            <div class="course-footer">
+                <div class="capacity-info">
+                    <span class="remaining-seats">{{ course.remaining }} 个剩余名额</span>
+                    <div class="capacity-bar">
+                        <div class="bar-inner" style="width: {{ (course.enrolled_count / course.capacity * 100) | round(1) }}%"></div>
+                    </div>
+                </div>
+                {% if course.remaining > 0 %}
+                <form method="POST" action="{{ url_for('enroll') }}">
+                    <input type="hidden" name="course_id" value="{{ course.course_id }}">
+                    <button type="submit" class="btn-enroll">立即选课</button>
+                </form>
+                {% else %}
+                <button class="btn-disabled" disabled>名额已满</button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </div>
-{% endblock %}
+
 <style>
-.course-container {
-    margin: 2rem 0;
-    background: white;
+/* 新增样式 */
+.student-info p {
+    display: flex;
+    margin: 0.8rem 0;
+}
+.info-label {
+    width: 80px;
+    color: #666;
+    font-weight: 500;
+}
+
+.course-card {
+    border: 1px solid #eee;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 1.2rem;
+    margin-bottom: 1.2rem;
+}
+.course-card.course-full {
+    background: #fff5f5;
+    border-color: #ffe3e3;
 }
 
-h3 {
-    padding: 1.5rem;
-    margin: 0;
-    color: #6a1b9a;
-    border-bottom: 2px solid #f0f0f0;
+.course-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+.course-credit {
+    background: #4CAF50;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
 }
 
-.course-table-wrapper {
-    overflow-x: auto;
-    padding: 0 1rem;
+.course-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    color: #666;
+    margin-bottom: 1rem;
+}
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-.course-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 800px;
+.capacity-info {
+    flex-grow: 1;
+    margin-right: 1rem;
 }
-
-.course-table th {
-    background: #f8f5fc;
-    color: #6a1b9a;
-    padding: 1rem;
-    text-align: left;
-    position: sticky;
-    left: 0;
-    white-space: nowrap;
+.capacity-bar {
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    margin-top: 0.5rem;
 }
-
-.course-table td {
-    padding: 1rem;
-    border-bottom: 1px solid #f0f0f0;
-    vertical-align: middle;
-}
-
-.course-table tr:hover {
-    background: #fcfaff;
+.bar-inner {
+    height: 100%;
+    background: #4CAF50;
+    border-radius: 3px;
+    transition: width 0.3s;
 }
 
 .btn-enroll {
-    background: #9c27b0;
+    background: #2196F3;
     color: white;
+    padding: 8px 20px;
     border: none;
-    padding: 0.6rem 1rem;
-    border-radius: 6px;
+    border-radius: 4px;
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    transition: background 0.3s;
+}
+.btn-disabled {
+    background: #ddd;
+    color: #666;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 4px;
 }
 
-.btn-enroll:hover {
-    background: #6a1b9a;
+.grade-status {
+    font-size: 0.9em;
 }
-
-.btn-enroll svg {
-    fill: currentColor;
-}
-
-@media (max-width: 768px) {
-    .course-container {
-        margin: 1rem;
-    }
-
-    .course-table td {
-        padding: 0.8rem;
-    }
-
-    .btn-enroll {
-        padding: 0.5rem 0.8rem;
-        font-size: 0.9rem;
-    }
+.usual-grade { color: #2196F3; }
+.final-grade { color: #4CAF50; }
+.total-grade {
+    color: #666;
+    font-size: 0.9em;
 }
 </style>
+{% endblock %}

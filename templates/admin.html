@@ -3,42 +3,60 @@
 {% block content %}
 <div class="card">
     <div class="admin-header">
-        <h2>课程管理</h2>
+        <h2>课程管理系统</h2>
         <div class="admin-actions">
             <a href="{{ url_for('admin_add_course') }}" class="btn btn-primary">
                 ➕ 新建课程
             </a>
             <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">
-                👥 管理用户
+                👥 用户管理
             </a>
         </div>
     </div>
 
     <table class="admin-table">
-        <!-- 原有课程表格保持不变 -->
-        <tr>
-            <th>课程名称</th>
-            <th>授课教师</th>
-            <th>时间</th>
-            <th>地点</th>
-            <th>操作</th>
-        </tr>
-        {% for course in courses %}
-        <tr>
-            <td>{{ course.name }}</td>
-            <td>{{ course.teacher_name }}</td>
-            <td>{{ course.time }}</td>
-            <td>{{ course.location }}</td>
-            <td>
-                <form method="POST" action="{{ url_for('delete_course') }}"
-                      onsubmit="return confirmAction('确定删除该课程吗？')">
-                    <input type="hidden" name="course_id" value="{{ course.id }}">
-                    <button class="btn btn-danger" type="submit">删除</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
+        <thead>
+            <tr>
+                <th>课程名称</th>
+                <th>所属学院</th>
+                <th>授课教师</th>
+                <th>上课时间</th>
+                <th>上课地点</th>
+                <th>学分</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for course in courses %}
+            <tr>
+                <td>{{ course.name }}</td>
+                <td>
+                    <span class="department-badge">
+                        {{ course.department_name }}
+                    </span>
+                </td>
+                <td>{{ course.teacher_name }}</td>
+                <td>
+
+                    {{ course.weekday }}
+                    {{ course.start_time|format_time }}-{{ course.end_time|format_time }}
+                </td>
+                <td>{{ course.building }} {{ course.room_number }}</td>
+                <td>{{ course.credit }} 学分</td>
+                <td class="actions">
+
+                    <form method="POST"
+                          action="{{ url_for('delete_course') }}"
+                          onsubmit="return confirm('确定删除【{{ course.name }}】课程？该操作不可恢复！')">
+                        <input type="hidden" name="course_id" value="{{ course.id }}">
+                        <button type="submit" class="btn btn-danger">🗑️ 删除</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
+
 </div>
 
 <style>
@@ -72,5 +90,27 @@
         background: #dc3545;
         color: white;
     }
+    .department-badge {
+    background-color: #e8f4ff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.admin-table td.actions {
+    display: flex;
+    gap: 8px;
+    border: none;
+}
+
+.btn-edit {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #ff4444;
+    color: white;
+}
 </style>
 {% endblock %}

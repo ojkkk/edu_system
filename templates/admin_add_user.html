@@ -3,33 +3,148 @@
 {% block content %}
 <div class="card">
     <h2>添加新用户</h2>
-    <form method="POST">
-        <div class="form-group">
-            <label>用户名</label>
-            <input type="text" name="username" required>
+
+    <form method="POST" id="userForm" class="user-form">
+        <!-- 错误提示 -->
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <div class="form-grid">
+            <!-- 左侧列 -->
+            <div class="form-column">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text"
+                           name="username"
+                           required
+                           pattern="[A-Za-z0-9_]{4,20}"
+                           title="4-20位字母、数字或下划线">
+                </div>
+
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password"
+                           name="password"
+                           required
+                           minlength="6"
+                           pattern="^(?=.*[A-Za-z])(?=.*\d).{6,}$"
+                           title="至少包含字母和数字">
+                </div>
+
+                <div class="form-group">
+                    <label>角色</label>
+                    <select name="role"
+                            id="roleSelect"
+                            required
+                            onchange="toggleDepartment()">
+                        <option value="" disabled selected>请选择角色</option>
+                        <option value="student">学生</option>
+                        <option value="teacher">教师</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 右侧列 -->
+            <div class="form-column">
+                <div class="form-group">
+                    <label>姓名</label>
+                    <input type="text"
+                           name="fullname"
+                           required
+                           pattern="[\u4e00-\u9fa5]{2,4}"
+                           title="2-4位中文姓名">
+                </div>
+
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email"
+                           name="email"
+                           required
+                           pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$">
+                </div>
+
+                <!-- 学院选择 -->
+                <div class="form-group" id="departmentGroup" style="display:none;">
+                    <label>所属学院</label>
+                    <select name="department_id"
+                            id="departmentSelect"
+                            class="modern-select">
+                        <option value="" disabled selected>请选择学院</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}">{{ dept.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
         </div>
-        <div class="form-group">
-            <label>密码</label>
-            <input type="password" name="password" required>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">立即添加</button>
+            <a href="{{ url_for('manage_users') }}" class="btn btn-secondary">取消返回</a>
         </div>
-        <div class="form-group">
-            <label>角色</label>
-            <select name="role" required>
-                <option value="student">学生</option>
-                <option value="teacher">教师</option>
-                <option value="admin">管理员</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>姓名</label>
-            <input type="text" name="fullname" required>
-        </div>
-        <div class="form-group">
-            <label>邮箱</label>
-            <input type="email" name="email" required>
-        </div>
-        <button type="submit" class="btn btn-primary">添加用户</button>
-        <a href="{{ url_for('manage_users') }}" class="btn">取消</a>
     </form>
 </div>
+
+<style>
+.user-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.alert-error {
+    color: #dc3545;
+    background: #f8d7da;
+    padding: 0.8rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+}
+
+#departmentGroup {
+    transition: all 0.3s ease;
+}
+</style>
+
+<script>
+function toggleDepartment() {
+    const role = document.getElementById('roleSelect').value;
+    const deptGroup = document.getElementById('departmentGroup');
+    const deptSelect = document.getElementById('departmentSelect');
+
+    // 显示逻辑
+    if (['student', 'teacher'].includes(role)) {
+        deptGroup.style.display = 'flex';
+        deptSelect.setAttribute('required', 'required');
+    } else {
+        deptGroup.style.display = 'none';
+        deptSelect.removeAttribute('required');
+        deptSelect.value = '';
+    }
+}
+
+// 表单提交验证
+document.getElementById('userForm').addEventListener('submit', function(e) {
+    const role = document.getElementById('roleSelect').value;
+    const dept = document.getElementById('departmentSelect').value;
+
+    if (['student', 'teacher'].includes(role) && !dept) {
+        e.preventDefault();
+        alert('请为所选角色指定所属学院');
+        return false;
+    }
+});
+</script>
 {% endblock %}
